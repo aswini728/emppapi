@@ -1,0 +1,394 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:batch="http://www.mulesoft.org/schema/mule/batch" xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/batch http://www.mulesoft.org/schema/mule/batch/current/mule-batch.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="91485dcd-0c32-449c-bf3a-acd9bd4bfaf7" >
+		<http:listener-connection host="0.0.0.0" port="8083" />
+	</http:listener-config>
+	<http:request-config name="HTTP_Request_configuration" doc:name="HTTP Request configuration" doc:id="9dad043d-e22a-4d0b-b455-af82054d2340" >
+		<http:request-connection host="localhost" port="8081" />
+	</http:request-config>
+	<http:request-config name="HTTP_Request_configuration1" doc:name="HTTP Request configuration" doc:id="834c6be4-61c6-41c1-a7fe-06f911b6ead6" >
+		<http:request-connection host="localhost" port="8082" />
+	</http:request-config>
+	<db:config name="Database_Config" doc:name="Database Config" doc:id="a5850630-dda1-4422-a446-4cce644d93d0" >
+		<db:my-sql-connection host="localhost" port="3306" user="root" password="Aswini08@" database="aswini" />
+	</db:config>
+	<file:config name="File_Config1" doc:name="File Config" doc:id="10b2886b-59ae-4ee2-8894-8d566ef46f83" />
+	<flow name="employesspapiFlow" doc:id="439c5c10-c201-4999-899b-3c89df56a58f" >
+		<http:listener doc:name="Listener" doc:id="3b19647f-bfb0-4753-810f-43bf4782b7fc" config-ref="HTTP_Listener_config" path="/prc"/>
+		<file:read doc:name="Read" doc:id="171d253d-d79f-4017-bd02-b0c6e6efa490" config-ref="File_Config1" path="C:\Users\vallu\Downloads\10000 Records_POC3.csv" outputMimeType="application/csv"/>
+		<ee:transform doc:name="Transform Message" doc:id="d7f0ee4f-5376-4c76-b6cb-490955af53ef" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="tenthousand" ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<ee:cache doc:name="Cache" doc:id="129d2b42-2a20-4cd6-a935-971b2d1551ed" >
+			<http:request method="GET" doc:name="Request" doc:id="d15cd0a3-fccd-4cd7-8904-dba9552a4d56" config-ref="HTTP_Request_configuration" path="/emp" responseTimeout="#[5000000000]"/>
+			<http:request method="GET" doc:name="Request" doc:id="8b9fc944-1c1f-42ac-a302-33e3ec94ddc0" config-ref="HTTP_Request_configuration1" path="/dir2" responseTimeout="#[5000000000000]"/>
+			<db:select doc:name="Select" doc:id="1cb59302-2db9-47fa-a217-0d60e6b3bdfe" config-ref="Database_Config">
+				<db:sql ><![CDATA[select * from Direction_1
+union
+select * from Direction_2]]></db:sql>
+			</db:select>
+			<ee:transform doc:name="Transform Message" doc:id="ade25230-6f6f-4a8b-938b-1be0e8d5d776">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+			<logger level="INFO" doc:name="Logger" doc:id="8316156e-14a4-4501-b042-29108f0b9b33" message='#["data retriwed"]' />
+		</ee:cache>
+		<ee:transform doc:name="Transform Message" doc:id="dee549be-b662-47ef-bac1-0eddab60d31e" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<set-variable value="#[%dw 2.0&#10;output application/json&#10;---&#10;payload]" doc:name="Set Variable" doc:id="b272a361-787c-4d44-9e4c-98e7bcac7688" variableName="thousand"/>
+		<ee:transform doc:name="Transform Message" doc:id="6bfab3a6-655f-42e6-a469-f81588d7ad80" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+import dw::core::Periods
+---
+vars.tenthousand map{
+    "age":abs((Periods::between($."Date of Birth" as String{ format:"M/d/yyyy"} as Date{format: "M/d/yyyy"}, now() as Date {format:"M/d/yyyy"})).years),
+    "month":($."Date of Birth" as String {format:"M/d/yyyy"} as Date{format:"M/d/yyyy"}).month,
+    "Emp ID":$."Emp ID",
+    "Name Prefix":$."Name Prefix",
+    "First Name":$."First Name",
+    "Middle Initial":$."Middle Initial",
+    "Last Name":$."Last Name",
+    "Gender":if($."Gender"=="M") "Male" else "Female",
+    "E Mail":$."E Mail",
+    "Father's Name":$."Father's Name",
+    "Mother's Name":$."Mother's Name",
+    "Mother's Maiden Name":$."Mother's Maiden Name",
+    "Date of Birth":$."Date of Birth",
+    "Weight in Kgs.":$."Weight in Kgs.",
+    "Date of Joining":4."Date of Joining",
+    "Short DOW":$."Short DOW",
+    "Age in Company (Years)":$."Age in Company (Years)",
+    "Salary":$."Salary",
+    "Last % Hike":$."Last % Hike",
+    "SSN":$."SSN",
+    "Phone No":$."Phone No. ",
+    "County":$."County",
+    "Zip":$."Zip",
+    "Region":$."Region",
+    "hike":($."Last % Hike" replace ($."Last % Hike")[-1] with "") as String as Number,
+
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<batch:job jobName="employesspapiBatch_Job" doc:id="07cf8468-4fe1-4b3a-a2ce-6736d4cd98be" maxFailedRecords="-1">
+			<batch:process-records >
+				<batch:step name="Accept_age1" doc:id="af2f1062-76be-4787-a6a0-e8d9844933e0" acceptExpression="#[(payload.age&gt;=30 and payload.age&lt;=50) and (payload.month !=4)]" acceptPolicy="ALL">
+					<ee:transform doc:name="Transform Message" doc:id="47fbdfd2-6ea2-44ac-82e5-eb0057acf30b" >
+						<ee:message >
+							<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+    "age": payload."age",
+    "month": payload."month",
+    "Emp ID": payload."Emp ID",
+    "Name Prefix": payload."Name Prefix",
+    "First Name": payload."First Name",
+    "Middle Initial": payload."Middle Initial",
+    "Last Name": payload."Last Name", 
+    "Gender": payload."Gender",
+    "E Mail": payload."E Mail",
+    "Father's Name": payload."Father's Name",
+    "Mother's Name" : payload."Mother'sName",
+    "Mother's Maiden Name": payload."Mother's Maiden Name",
+    "Date of Birth": payload."Date of Birth",
+    "Weight in Kgs.": payload."Weight in Kgs.",
+    "Date of Joining": payload."Date of Joining",
+    "Short Dow": payload."Short DOw",
+    "Age in Company (Years)": payload."Age In Company (Years)",
+    "Salary": payload."Salary",
+    "Last Hike": payload."Last & Hike",
+    "SSN": payload."SSN",
+    "Phone No" : payload."Phone No.",
+    "Place Name": payload."Place Name",
+    "County": payload."County",
+    "Zip": payload."Zip",
+    "Region": payload."Region",
+    "hike": payload."hike"
+}]]></ee:set-payload>
+						</ee:message>
+						<ee:variables >
+							<ee:set-variable variableName="zip" ><![CDATA[%dw 2.0
+output application/json
+---
+payload.Zip]]></ee:set-variable>
+							<ee:set-variable variableName="statecity" ><![CDATA[%dw 2.0
+output application/json
+---
+{
+    "age": payload."age",
+    "month": payload."month",
+    "Emp ID": payload."Emp ID",
+    "Name Prefix": payload."Name Prefix",
+    "First Name": payload."First Name",
+    "Middle Initial": payload."Middle Initial",
+    "Last Name": payload."Last Name", 
+    "Gender": payload."Gender",
+    "E Mail": payload."E Mail",
+    "Father's Name": payload."Father's Name",
+    "Mother's Name" : payload."Mother'sName",
+    "Mother's Maiden Name": payload."Mother's Maiden Name",
+    "Date of Birth": payload."Date of Birth",
+    "Weight in Kgs.": payload."Weight in Kgs.",
+    "Date of Joining": payload."Date of Joining",
+    "Short DOW": payload."Short DOW",
+    "Age in Company (Years)": payload."Age In Company (Years)",
+    "Salary": payload."Salary",
+    "Last Hike": payload."Last & Hike",
+    "SSN": payload."SSN",
+    "Phone No" : payload."Phone No.",
+    "Place Name": payload."Place Name",
+    "County": payload."County",
+    "Zip": payload."Zip",
+    "Region": payload."Region",
+    "hike": payload."hike"
+}]]></ee:set-variable>
+						</ee:variables>
+					</ee:transform>
+					<ee:transform doc:name="Transform Message" doc:id="de8fb41d-861a-4c83-88e6-da3ea22a53ab" >
+						<ee:message >
+							<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+vars.thousand filter($.Zip==vars.zip)
+map{
+	 "age": vars.statecity."age",
+	 "month":vars.statecity."month",
+	 "Emp ID":vars.statecity."Emp ID",
+	 "Name Prefix":vars.statecity."Name Prefix",
+	 "First Name": vars.statecity."First Name",
+	 "Middle Initial":vars.statecity."Middle Initial", 
+	 "Last Name": vars.statecity."Last Name",
+	 "Gender": vars.statecity."Gender",
+	 "E Mail": vars.statecity."E Mail", 
+	 "Father's Name": vars.statecity."Father's Name", 
+	 "Mother's Name" : vars.statecity."Mother'sName", 
+	 "Mother's Maiden Name": vars.statecity."Mother's Maiden Name", 
+	 "Date_of_Birth": vars.statecity."Date of Birth", 
+	 "Weight": vars.statecity."Weight in Kgs.", 
+	 "Date_of_Joining": payload."Date of Joining", 
+"Short DOW": vars.statecity."Short DOW", 
+"Age in Company (Years)": vars.statecity."Age In Company (Years)",
+"Salary": vars.statecity."Salary", 
+"Last Hike": vars.statecity."Last & Hike", 
+"SSN": vars.statecity."SSN",
+"Phone No" : vars.statecity."Phone No.", 
+"Place Name": vars.statecity."Place Name",
+"County": vars.statecity."County", 
+"Zip": vars.statecity."Zip",
+"State": $."State",
+"City": $."City" ,
+"Region": vars.statecity."Region",
+"hike": if((vars.statecity."hike" as StringCoerceable as Number)<=5) "Low hike" else if ((vars.statecity."hike" as StringCoerceable as Number)<=10) "Medium hike" else if ((vars.statecity."hike" as StringCoerceable as Number)<=15) "High" else "null"
+}]]></ee:set-payload>
+						</ee:message>
+					</ee:transform>
+					<logger level="INFO" doc:name="Logger" doc:id="88519fa1-cb2b-487a-8dc8-88a46e804cd0" message="#[payload]"/>
+					<db:bulk-insert doc:name="Bulk insert" doc:id="744de3a9-2b59-42ca-984a-af8e481bbcd4" config-ref="Database_Config">
+						<db:bulk-input-parameters ><![CDATA[#[%dw 2.0
+output application/json skipNullOn="everywhere"
+---
+payload  map{
+        "age" : $."age",
+     "month" : $."month",
+"First_Name": $."First Name",
+"Last_Name" : $."Last Name",
+"Gender" : $."Gender",
+"E_Mail" : $."E Mail",
+"Date_of_Birth" : $."Date_of_Birth",
+"Weight" : $."Weight",
+"Date_of_Joining" : $."Date_of_Joining",
+"Salary" : $."Salary",
+"Last_Hike": $."Last Hike",
+"Employee_Hike": $."hike",
+"SSN" : $."SSN",
+"PhoneNo" : $."Phone No",
+"Place_Name" : $."Place Name",
+"County" : $."County",
+"City" : $."City",
+"State" : $."State",
+"Zip" : $."Zip",
+"Region" : $."Region"
+}]]]></db:bulk-input-parameters>
+						<db:sql ><![CDATA[insert into maintable values(:age,:month,:First_Name,:Last_Name,:Gender,:E_Mail,:Date_of_Birth,:Weight,:Date_of_Joining,:Salary,:Last_Hike,:Employee_Hike,:SSN,:PhoneNo,:Place_Name,:County,:City,:State,:Zip,:Region);]]></db:sql>
+					</db:bulk-insert>
+				</batch:step>
+				<batch:step name="Accept_age" doc:id="43297973-0889-4f04-bc52-fcb4fe796736" acceptExpression="#[(payload.age&gt;=30 and payload.age&lt;=50) and (payload.month ==4)]" acceptPolicy="ALL">
+					<ee:transform doc:name="Copy_of_Transform Message" doc:id="a50c3737-d220-4298-ad95-aa112bea4f89">
+						<ee:message>
+							<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+    "age": payload."age",
+    "month": payload."month",
+    "Emp ID": payload."Emp ID",
+    "Name Prefix": payload."Name Prefix",
+    "First Name": payload."First Name",
+    "Middle Initial": payload."Middle Initial",
+    "Last Name": payload."Last Name", 
+    "Gender": payload."Gender",
+    "E Mail": payload."E Mail",
+    "Father's Name": payload."Father's Name",
+    "Mother's Name" : payload."Mother'sName",
+    "Mother's Maiden Name": payload."Mother's Maiden Name",
+    "Date of Birth": payload."Date of Birth",
+    "Weight in Kgs.": payload."Weight in Kgs.",
+    "Date of Joining": payload."Date of Joining",
+    "Short Dow": payload."Short DOw",
+    "Age in Company (Years)": payload."Age In Company (Years)",
+    "Salary": payload."Salary",
+    "Last Hike": payload."Last & Hike",
+    "SSN": payload."SSN",
+    "Phone No" : payload."Phone No.",
+    "Place Name": payload."Place Name",
+    "County": payload."County",
+    "Zip": payload."Zip",
+    "Region": payload."Region",
+    "hike": payload."hike"
+}]]></ee:set-payload>
+						</ee:message>
+						<ee:variables>
+							<ee:set-variable variableName="zip"><![CDATA[%dw 2.0
+output application/json
+---
+payload.Zip]]></ee:set-variable>
+							<ee:set-variable variableName="statecity"><![CDATA[%dw 2.0
+output application/json
+---
+{
+    "age": payload."age",
+    "month": payload."month",
+    "Emp ID": payload."Emp ID",
+    "Name Prefix": payload."Name Prefix",
+    "First Name": payload."First Name",
+    "Middle Initial": payload."Middle Initial",
+    "Last Name": payload."Last Name", 
+    "Gender": payload."Gender",
+    "E Mail": payload."E Mail",
+    "Father's Name": payload."Father's Name",
+    "Mother's Name" : payload."Mother'sName",
+    "Mother's Maiden Name": payload."Mother's Maiden Name",
+    "Date of Birth": payload."Date of Birth",
+    "Weight in Kgs.": payload."Weight in Kgs.",
+    "Date of Joining": payload."Date of Joining",
+    "Short Dow": payload."Short DOw",
+    "Age in Company (Years)": payload."Age In Company (Years)",
+    "Salary": payload."Salary",
+    "Last Hike": payload."Last & Hike",
+    "SSN": payload."SSN",
+    "Phone No" : payload."Phone No.",
+    "Place Name": payload."Place Name",
+    "County": payload."County",
+    "Zip": payload."Zip",
+    "Region": payload."Region",
+    "hike": payload."hike"
+}]]></ee:set-variable>
+						</ee:variables>
+					</ee:transform>
+					<ee:transform doc:name="Transform Message" doc:id="3869eab3-c04e-47b2-8935-94a355683df2" >
+						<ee:message >
+							<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+vars.thousand filter($.Zip==vars.zip)
+map{
+	 "age": vars.statecity."age",
+	 "month":vars.statecity."month",
+	 "Emp ID":vars.statecity."Emp ID",
+	 "Name Prefix":vars.statecity."Name Prefix",
+	 "First Name": vars.statecity."First Name",
+	 "Middle Initial":vars.statecity."Middle Initial", 
+	 "Last Name": vars.statecity."Last Name",
+	 "Gender": vars.statecity."Gender",
+	 "E_Mail": vars.statecity."E Mail", 
+	 "Father's Name": vars.statecity."Father's Name", 
+	 "Mother's Name" : vars.statecity."Mother'sName", 
+	 "Mother's Maiden Name": vars.statecity."Mother's Maiden Name", 
+	 "Date_of_Birth": vars.statecity."Date of Birth", 
+	 "Weight": vars.statecity."Weight in Kgs.", 
+	 "Date_of_Joining": payload."Date of Joining", 
+"Short DOW": vars.statecity."Short DOW", 
+"Age in Company (Years)": vars.statecity."Age In Company (Years)",
+"Salary": vars.statecity."Salary", 
+"Last Hike": vars.statecity."Last & Hike", 
+"SSN": vars.statecity."SSN",
+"Phone No" : vars.statecity."Phone No.", 
+"Place Name": vars.statecity."Place Name",
+"County": vars.statecity."County", 
+"Zip": vars.statecity."Zip",
+"State": $."State",
+"City": $."City" ,
+"Region": vars.statecity."Region",
+"hike": if((vars.statecity."hike" as StringCoerceable as Number)<=5) "Low hike" else if ((vars.statecity."hike" as StringCoerceable as Number)<=10) "Medium hike" else if ((vars.statecity."hike" as StringCoerceable as Number)<=15) "High" else "null"
+}]]></ee:set-payload>
+						</ee:message>
+					</ee:transform>
+					<logger level="INFO" doc:name="Logger" doc:id="c3596280-4847-4a91-b488-e72b35bc5395" message="#[payload]"/>
+					<db:bulk-insert doc:name="Copy_of_Bulk insert" doc:id="cb9ded40-430b-4239-b952-7ef3d7a72ece" config-ref="Database_Config" >
+						<db:bulk-input-parameters ><![CDATA[#[%dw 2.0
+output application/json skipNullOn="everywhere"
+---
+payload  map{
+        "age" : $."age",
+     "month" : $."month",
+"First_Name": $."First Name",
+"Last_Name" : $."Last Name",
+"Gender" : $."Gender",
+"E_Mail" : $."E Mail",
+"Date_of_Birth" : $."Date of Birth",
+"Weight" : $."Weight in Kgs.",
+"Date_of_Joining" : $."Date of Joining",
+"Salary" : $."Salary",
+"Last_Hike": $."Last % Hike",
+"Employee_Hike": $."hike",
+"SSN" : $."SSN",
+"PhoneNo" : $."Phone No. ",
+"Place_Name" : $."Place Name",
+"County" : $."County",
+"City" : $."City",
+"State" : $."State",
+"Zip" : $."Zip",
+"Region" : $."Region"
+}]]]></db:bulk-input-parameters>
+						<db:sql ><![CDATA[insert into sectable values(:age,:month,:First_Name,:Last_Name,:Gender,:E_Mail,:Date_of_Birth,:Weight,:Date_of_Joining,:Salary,:Last_Hike,:Employee_Hike,:SSN,:PhoneNo,:Place_Name,:County,:City,:State,:Zip,:Region);]]></db:sql>
+					</db:bulk-insert>
+				</batch:step>
+			</batch:process-records>
+			<batch:on-complete >
+				<logger level="INFO" doc:name="Logger" doc:id="155cd874-6003-4f17-a0ca-35ef9c9ed52f" message='#["end"]' />
+			</batch:on-complete>
+		</batch:job>
+	</flow>
+</mule>
